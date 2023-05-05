@@ -10,7 +10,14 @@ from requests.exceptions import RequestException
 from playwright.sync_api import sync_playwright
 from tenacity import retry, wait_fixed,stop_after_attempt
 import random
+import logging
 
+
+logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 
 PROXIES = tools_api.load_json_file('proxies.json')
@@ -31,13 +38,14 @@ class BaseScraper(ABC):
     
 
     def get_html_from_url(self,url):
-        headers = {"User-Agent": self.get_user_agent}
+        headers = {"User-Agent": self.get_user_agent()}
         response = requests.get(url, headers=headers)
 
         if response.status_code==200:
             return response.text
         else:
-            print(f'Error al obtener la pagina: {response.status_code}')
+            #print(f'Error al obtener la pagina: {response.status_code}')
+            logging.error("Error al obtener la pagina: %i", response.status_code)
             return None
 
 
@@ -61,7 +69,7 @@ class BaseScraper(ABC):
             response.raise_for_status()
             return response.text
         except RequestException as e:
-            print(f"Error al obtener la pagina: {e}")
+            logging.error("Error al obtener la pagina: %s", e)
             return None
 
 
@@ -71,11 +79,12 @@ class BaseScraper(ABC):
 
 
     def run(self):
+        logging.info("Starting scraper: %s", self.__class__.__name__ )
         html = self.fetch_results()
         self.parse_results(html)
         for product in self.products:
             self.save_product(product)
-
+        logging.info("Scraper finished: %s", self.__class__.__name__ )
 
 
 
@@ -89,7 +98,7 @@ class FravegaScraper(BaseScraper):
     def parse_results(self, html):
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('article', {'data-test-id': 'result-item'})
-        print(f'Fravega, Cantidad de productos encontrados: {len(product_list)}')
+        logging.info('Fravega, Cantidad de productos encontrados: %i', len(product_list))
 
         for product in product_list:
             product_data = {
@@ -121,6 +130,7 @@ class GarbarinoScraper(BaseScraper):
     def parse_results(self, html):
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('section', {'class': 'vtex-product-summary-2-x-container'})
+        logging.info('Garbarino, Cantidad de productos encontrados: %i', len(product_list))
         
         for product in product_list:
             # Name and URL
@@ -181,7 +191,7 @@ class PerozziScraper(BaseScraper):
     def parse_results(self, html):
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('div', {'class': 'js-product-miniature-wrapper'})
-        
+        logging.info('Perozzi, Cantidad de productos encontrados: %i', len(product_list))
 
         for product in product_list:
             # Name and URL

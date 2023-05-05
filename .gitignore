@@ -5,3 +5,4 @@ Lib/
 products.db
 pyvenv.cfg
 requests_prueba.py
+scraper.log
