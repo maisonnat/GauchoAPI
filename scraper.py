@@ -6,10 +6,15 @@ import datetime
 from abc import ABC, abstractmethod
 from models import Product, create_tables
 import requests
+from requests.exceptions import RequestException
 from playwright.sync_api import sync_playwright
+from tenacity import retry, wait_fixed,stop_after_attempt
+import random
 
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36"
+
+PROXIES = tools_api.load_json_file('proxies.json')
+USER_AGENT = tools_api.load_json_file('user_agents.json')
 
 
 class BaseScraper(ABC):
@@ -17,9 +22,16 @@ class BaseScraper(ABC):
         self.query = query
         self.products = []
 
+    def get_proxy(self):
+        return random.choice(PROXIES)
+    
+
+    def get_user_agent(self):
+        return random.choice(USER_AGENT)
+    
 
     def get_html_from_url(self,url):
-        headers = {"User-Agent": USER_AGENT}
+        headers = {"User-Agent": self.get_user_agent}
         response = requests.get(url, headers=headers)
 
         if response.status_code==200:
@@ -39,10 +51,18 @@ class BaseScraper(ABC):
             product.save()
         else:
             Product.create(**product_data)
+        
 
+    @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
     @abstractmethod
     def fetch_results(self):
-        pass
+        try:
+            response = requests.get(self.url, headers=self.get_user_agent, proxies={"http": self.get_proxy(), "https": self.get_proxy()})
+            response.raise_for_status()
+            return response.text
+        except RequestException as e:
+            print(f"Error al obtener la pagina: {e}")
+            return None
 
 
     @abstractmethod
@@ -80,14 +100,6 @@ class FravegaScraper(BaseScraper):
             }
             self.products.append(product_data)
     
-
-    def run(self):
-        html = self.fetch_results()
-        self.parse_results(html)
-        for product in self.products:
-            self.save_product(product)
-
-
 
 class GarbarinoScraper(BaseScraper):
     def fetch_results(self):
@@ -158,13 +170,6 @@ class GarbarinoScraper(BaseScraper):
 
             self.products.append(product_data)
 
-        
-    def run(self):
-        html = self.fetch_results()
-        self.parse_results(html)
-        for product in self.products:
-            self.save_product(product)
-
 
 class PerozziScraper(BaseScraper):
 
@@ -201,10 +206,3 @@ class PerozziScraper(BaseScraper):
             }
 
             self.products.append(product_data)
-
-
-    def run(self):
-        html = self.fetch_results()
-        self.parse_results(html)
-        for product in self.products:
-            self.save_product(product)
