@@ -25,6 +25,11 @@ USER_AGENT = tools_api.load_json_file('user_agents.json')
 
 
 class BaseScraper(ABC):
+    """
+    Class base for all scrapers of sites.
+    Provides common method for all sub-class
+    
+    """
     def __init__(self, query):
         self.query = query
         self.products = []
@@ -38,6 +43,15 @@ class BaseScraper(ABC):
     
 
     def get_html_from_url(self,url):
+        """
+        Gets the HTML content of a URL using the 'requests' library.
+
+        :param url: URL of site in order to get the content.
+        :type url: str
+        :return: The HTML content of the web page, if it could be obtained successfuly.
+                    Otherwise, None.
+        :rtype: str, None
+        """
         headers = {"User-Agent": self.get_user_agent()}
         session = requests.Session()
         response = session.get(url, headers=headers)
@@ -51,15 +65,14 @@ class BaseScraper(ABC):
 
 
     def save_product(self, product_data):
-        product = Product.get_or_none(Product.url == product_data['url'])
+        product, created = Product.get_or_create(url=product_data['url'], defaults=product_data)
 
-        if product:
+        if not created:
             product.price = product_data['price']
             product.image_url = product_data['image_url']
             product.timestamp = datetime.datetime.now()
             product.save()
-        else:
-            Product.create(**product_data)
+
         
 
     @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
