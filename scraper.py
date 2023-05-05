@@ -39,7 +39,8 @@ class BaseScraper(ABC):
 
     def get_html_from_url(self,url):
         headers = {"User-Agent": self.get_user_agent()}
-        response = requests.get(url, headers=headers)
+        session = requests.Session()
+        response = session.get(url, headers=headers)
 
         if response.status_code==200:
             return response.text
