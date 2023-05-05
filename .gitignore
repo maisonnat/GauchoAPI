@@ -1,0 +1,7 @@
+__pycache__/
+Include/
+Scripts/
+Lib/
+products.db
+pyvenv.cfg
+requests_prueba.py
