@@ -2,6 +2,15 @@
 
 GauchoAPI is a web scraper project designed to gather product information from multiple e-commerce websites. I am currently learning Python backend, and as I progress in my skills and knowledge, I will keep updating this project with new features and improvements.
 
+#### 🏄 Stack & Lib's
+- beautifulsoup4
+- requests
+- playwright
+- tenacity
+- Flask
+- python-dotenv
+- diskcache
+
 ## 🌟 Getting Started
 
 These instructions will help you set up the project and run it on your local machine for development and testing purposes.
