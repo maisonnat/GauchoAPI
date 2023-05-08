@@ -163,7 +163,7 @@ class BaseScraper(ABC):
         pass
 
 
-    def run(self, send_notificactions=False):
+    def run(self, send_notifications=False):
         """
         Run the scraper, fetch the HTML content, parse the results, and save the product data. If the structure change and have error,
         then send email notification if send_notifications is set to True.
@@ -186,7 +186,7 @@ class BaseScraper(ABC):
         except ScraperError as e:
             logging.error("Error on run() scraper: %s", e.scraper)
             logging.error("Message error: %s", e.message)
-            if send_notificactions:
+            if send_notifications:
                 send_email_notification(f"Error trying to run: {e.scraper}", f"Message error: {e.message}")
 
 
