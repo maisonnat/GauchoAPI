@@ -15,7 +15,7 @@ Make sure you have Python 3.x installed on your machine. You can download Python
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/your_username/GauchoAPI.git
+git clone https://github.com/maisonnat/GauchoAPI.git
 ```
 
 2. Install the required packages using the `requirements.txt` file:
