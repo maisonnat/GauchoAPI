@@ -72,6 +72,18 @@ class BaseScraper(ABC):
         self.query = query
         self.products = []
 
+    
+    def format_query(self,query:str)->str:
+        """
+        Format the query string for the target website.
+        
+        :param query: The search query.
+        :type query: str
+        :return: The formatted search query.
+        :rtype: str
+        """
+        return query
+
     def get_proxy(self):
         """
         Get a random proxy from the list of proxies.
@@ -199,6 +211,15 @@ class ScraperError(Exception):
 
 
 class FravegaScraper(BaseScraper):
+    
+    def __init__(self, query: str):
+        self.query = self.format_query(query)
+        self.products = []
+
+    def format_query(self, query: str) -> str:
+        return query.replace(" ", "%20")
+    
+
     def fetch_results(self):
         """
         Fetch the HTML content of the Fravega search results page.
@@ -235,6 +256,13 @@ class FravegaScraper(BaseScraper):
     
 
 class GarbarinoScraper(BaseScraper):
+    def __init__(self, query: str):
+        self.query = self.format_query(query)
+        self.products = []
+
+    def format_query(self, query: str) -> str:
+        return query.replace(" ", "%20")
+    
     def fetch_results(self):
         """
         Fetch the HTML content of the Garbarino search results page.
@@ -320,6 +348,12 @@ class GarbarinoScraper(BaseScraper):
             self.products.append(product_data)
 
 class PerozziScraper(BaseScraper):
+    def __init__(self, query: str):
+        self.query = self.format_query(query)
+        self.products = []
+
+    def format_query(self, query: str) -> str:
+        return query.replace(" ", "%20")
 
     def fetch_results(self):
         """
