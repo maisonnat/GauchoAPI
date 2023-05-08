@@ -12,11 +12,14 @@ from tenacity import retry, wait_fixed,stop_after_attempt
 import random
 import logging
 import time
+from dotenv import load_dotenv
+import os
+import smtplib
+from email.message import EmailMessage
 from diskcache import Cache
 
+load_dotenv()
 cache = Cache("/cache_directory")
-
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s',
@@ -34,6 +37,29 @@ logging.getLogger().addHandler(console_handler)
 
 PROXIES = tools_api.load_json_file('proxies.json')
 USER_AGENT = tools_api.load_json_file('user_agents.json')
+
+def send_email_notification(subject, body):
+    """
+    Set your .env with this information
+    YOUR_USERNAME=
+    YOUR_PASSWORD=
+
+    and then setting your From and To
+    """
+    your_username = os.getenv("YOUR_USERNAME")
+    your_password = os.getenv("YOUR_PASSWORD")
+    msg = EmailMessage()
+    msg.set_content(body)
+
+    msg['Subject'] = subject
+    msg['From'] = 'from_email@example.com'
+    msg['To'] = 'to_email@example.com'
+
+    
+    with smtplib.SMTP_SSL('smtp.example.com', 465) as server:
+        server.login(your_username, your_password)
+        server.send_message(msg)
+
 
 
 class BaseScraper(ABC):
@@ -139,18 +165,30 @@ class BaseScraper(ABC):
 
     def run(self):
         """
-        Run the scraper, fetch the HTML content, parse the results, and save the product data.
+        Run the scraper, fetch the HTML content, parse the results, and save the product data. If the structure change and have error,
+        then send email notification
         """
-        start_time = time.time()
-        logging.info("Starting scraper: %s", self.__class__.__name__ )
-        html = self.fetch_results()
-        self.parse_results(html)
-        for product in self.products:
-            self.save_product(product)
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        logging.info("Scraper finished: %s, elapsed time: %.2f seconds", self.__class__.__name__, elapsed_time)
+        try:
+            start_time = time.time()
+            logging.info("Starting scraper: %s", self.__class__.__name__ )
+            html = self.fetch_results()
+            self.parse_results(html)
+            for product in self.products:
+                self.save_product(product)
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            logging.info("Scraper finished: %s, elapsed time: %.2f seconds", self.__class__.__name__, elapsed_time)
+        except ScraperError as e:
+            logging.error("Error on run() scraper: %s", e.scraper)
+            logging.error("Message error: %s", e.message)
+            send_email_notification(f"Error trying to run: {e.scraper}", f"Message error: {e.message}")
 
+
+class ScraperError(Exception):
+    def __init__(self, message, scraper):
+        self.message = message
+        self.scraper = scraper
+        super().__init__(message)
 
 
 
@@ -175,6 +213,9 @@ class FravegaScraper(BaseScraper):
         """
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('article', {'data-test-id': 'result-item'})
+        if not product_list:
+            raise ScraperError("Fravega: elements not found", self.__class__.__name__)
+        
         logging.info('Fravega: Quantity of products found: %i', len(product_list))
 
         for product in product_list:
@@ -219,6 +260,9 @@ class GarbarinoScraper(BaseScraper):
         """
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('section', {'class': 'vtex-product-summary-2-x-container'})
+        if not product_list:
+            raise ScraperError("Garbarino: elements not found", self.__class__.__name__)
+        
         logging.info('Garbarino: Quantity of products found: %i', len(product_list))
         
         for product in product_list:
@@ -269,7 +313,6 @@ class GarbarinoScraper(BaseScraper):
 
             self.products.append(product_data)
 
-
 class PerozziScraper(BaseScraper):
 
     def fetch_results(self):
@@ -286,6 +329,8 @@ class PerozziScraper(BaseScraper):
     def parse_results(self, html):
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('div', {'class': 'js-product-miniature-wrapper'})
+        if not product_list:
+            raise ScraperError("Perozzi: elements not found", self.__class__.__name__)
         logging.info('Perozzi: Quantity of products found: %i', len(product_list))
 
         for product in product_list:
