@@ -10,6 +10,7 @@ GauchoAPI is a web scraper project designed to gather product information from m
 - Flask
 - python-dotenv
 - diskcache
+- peewee
 
 ## 🌟 Getting Started
 
