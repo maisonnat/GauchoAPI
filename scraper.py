@@ -35,13 +35,25 @@ class BaseScraper(ABC):
         self.products = []
 
     def get_proxy(self):
+        """
+        Get a random proxy from the list of proxies.
+
+        :return: A random proxy.
+        :rtype: str
+        """
         return random.choice(PROXIES)
     
 
     def get_user_agent(self):
+        """
+        Get a random User-Agent from the list of User-Agents.
+
+        :return: A random User-Agent.
+        :rtype: str
+        """
         return random.choice(USER_AGENT)
     
-
+    @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
     def get_html_from_url(self,url):
         """
         Gets the HTML content of a URL using the 'requests' library.
@@ -53,18 +65,22 @@ class BaseScraper(ABC):
         :rtype: str, None
         """
         headers = {"User-Agent": self.get_user_agent()}
-        session = requests.Session()
-        response = session.get(url, headers=headers)
-
-        if response.status_code==200:
+        try:
+            session = requests.Session()
+            response = session.get(url, headers=headers)
             return response.text
-        else:
-            #print(f'Error al obtener la pagina: {response.status_code}')
-            logging.error("Error al obtener la pagina: %i", response.status_code)
-            return None
+        except requests.RequestException as e:
+            logging.error("Error fetching the page: %i", response.status_code)
+            raise e
 
 
     def save_product(self, product_data):
+        """
+        Save the product data into the database.
+
+        :param product_data: Dictionary containing product data.
+        :type product_data: dict
+        """
         product, created = Product.get_or_create(url=product_data['url'], defaults=product_data)
 
         if not created:
@@ -76,23 +92,37 @@ class BaseScraper(ABC):
         
 
     @retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
-    @abstractmethod
     def fetch_results(self):
+        """
+        Fetch the HTML content of the search results page.
+
+        :return: The HTML content of the search results page.
+        :rtype: str
+        """
         try:
             response = requests.get(self.url, headers=self.get_user_agent, proxies={"http": self.get_proxy(), "https": self.get_proxy()})
             response.raise_for_status()
             return response.text
         except RequestException as e:
-            logging.error("Error al obtener la pagina: %s", e)
-            return None
+            logging.error("Error fetching HTML content of the search results page: %s", e)
+            raise e
 
 
     @abstractmethod
     def parse_results(self,html):
+        """
+        Parse the HTML content of the search results page and extract the product data.
+
+        :param html: The HTML content of the search results page.
+        :type html: str
+        """
         pass
 
 
     def run(self):
+        """
+        Run the scraper, fetch the HTML content, parse the results, and save the product data.
+        """
         logging.info("Starting scraper: %s", self.__class__.__name__ )
         html = self.fetch_results()
         self.parse_results(html)
@@ -105,14 +135,26 @@ class BaseScraper(ABC):
 
 class FravegaScraper(BaseScraper):
     def fetch_results(self):
+        """
+        Fetch the HTML content of the Fravega search results page.
+
+        :return: The HTML content of the Fravega search results page.
+        :rtype: str
+        """
         url = f'https://www.fravega.com/l/?keyword={self.query}'
         return self.get_html_from_url(url)
     
 
     def parse_results(self, html):
+        """
+        Parse the HTML content of the Fravega search results page and extract the product data.
+
+        :param html: The HTML content of the Fravega search results page.
+        :type html: str
+        """
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('article', {'data-test-id': 'result-item'})
-        logging.info('Fravega, Cantidad de productos encontrados: %i', len(product_list))
+        logging.info('Fravega: Quantity of products found: %i', len(product_list))
 
         for product in product_list:
             product_data = {
@@ -126,6 +168,12 @@ class FravegaScraper(BaseScraper):
 
 class GarbarinoScraper(BaseScraper):
     def fetch_results(self):
+        """
+        Fetch the HTML content of the Garbarino search results page.
+
+        :return: The HTML content of the Garbarino search results page.
+        :rtype: str
+        """
         url = f'https://www.garbarino.com/{self.query}?_q={self.query}&map=ft'
 
         with sync_playwright() as p:
@@ -142,9 +190,15 @@ class GarbarinoScraper(BaseScraper):
 
 
     def parse_results(self, html):
+        """
+        Parse the HTML content of the Garbarino search results page and extract the product data.
+
+        :param html: The HTML content of the Garbarino search results page.
+        :type html: str
+        """
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('section', {'class': 'vtex-product-summary-2-x-container'})
-        logging.info('Garbarino, Cantidad de productos encontrados: %i', len(product_list))
+        logging.info('Garbarino: Quantity of products found: %i', len(product_list))
         
         for product in product_list:
             # Name and URL
@@ -198,6 +252,12 @@ class GarbarinoScraper(BaseScraper):
 class PerozziScraper(BaseScraper):
 
     def fetch_results(self):
+        """
+        Parse the HTML content of the Garbarino search results page and extract the product data.
+
+        :param html: The HTML content of the Garbarino search results page.
+        :type html: str
+        """
         url = f'https://www.perozzi.com.ar/module/iqitsearch/searchiqit?order=product.position.desc&resultsPerPage=9999999&s={self.query}'
         return self.get_html_from_url(url)
     
@@ -205,7 +265,7 @@ class PerozziScraper(BaseScraper):
     def parse_results(self, html):
         soup = BeautifulSoup(html, 'html.parser')
         product_list = soup.find_all('div', {'class': 'js-product-miniature-wrapper'})
-        logging.info('Perozzi, Cantidad de productos encontrados: %i', len(product_list))
+        logging.info('Perozzi: Quantity of products found: %i', len(product_list))
 
         for product in product_list:
             # Name and URL
