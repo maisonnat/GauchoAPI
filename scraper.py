@@ -12,9 +12,11 @@ from tenacity import retry, wait_fixed,stop_after_attempt
 import random
 import logging
 import time
+from diskcache import Cache
+
+cache = Cache("/cache_directory")
 
 
-#logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s',
@@ -74,10 +76,16 @@ class BaseScraper(ABC):
                     Otherwise, None.
         :rtype: str, None
         """
+        cached_html = cache.get(url)
+        if cached_html is not None:
+            logging.info("Retrieved cache HTML for URL: %s", url)
+            return cached_html
+        
         headers = {"User-Agent": self.get_user_agent()}
         try:
             session = requests.Session()
             response = session.get(url, headers=headers)
+            cache.set(url,response.text, expire=86400) #expire cache 1 day(in seconds)
             return response.text
         except requests.RequestException as e:
             logging.error("Error fetching the page: %i", response.status_code)
