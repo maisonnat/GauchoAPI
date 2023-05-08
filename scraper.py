@@ -11,9 +11,19 @@ from playwright.sync_api import sync_playwright
 from tenacity import retry, wait_fixed,stop_after_attempt
 import random
 import logging
+import time
 
 
-logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(filename='scraper.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("scraper.log", mode="w")
+    ]
+)
+
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -123,12 +133,15 @@ class BaseScraper(ABC):
         """
         Run the scraper, fetch the HTML content, parse the results, and save the product data.
         """
+        start_time = time.time()
         logging.info("Starting scraper: %s", self.__class__.__name__ )
         html = self.fetch_results()
         self.parse_results(html)
         for product in self.products:
             self.save_product(product)
-        logging.info("Scraper finished: %s", self.__class__.__name__ )
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logging.info("Scraper finished: %s, elapsed time: %.2f seconds", self.__class__.__name__, elapsed_time)
 
 
 
