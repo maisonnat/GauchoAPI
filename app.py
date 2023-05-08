@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
-from scraper import FravegaScraper, GarbarinoScraper, PerozziScraper
+from scrapers.fravega_scraper import FravegaScraper
+from scrapers.perozzi_scraper import PerozziScraper
 """
 excluding GarbarinoScraper, because need Playwright, and need to fix TimeoutError, 
-but with the rest of the scraper like FravegaScraper, and PerozziScraper work great with request
+but with the rest of the scraper like FravegaScraper, and PerozziScraper work great with requests
 """
 app = Flask(__name__)
 
