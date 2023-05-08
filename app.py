@@ -1,12 +1,19 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
+from scraper import FravegaScraper, GarbarinoScraper, PerozziScraper
 
 app = Flask(__name__)
 
-@app.route('/api/search/<search_query>', methods=['GET'])
-def search_products(search_query):
-    #here code to web scraping and save the data in to data base
-    ...
+@app.route('/search', methods=['GET'])
+def search():
+    query = request.args.get('query')
+    store = request.args.get('store')
 
+    if not query or not store:
+        return jsonify({"error": "Both 'query' and 'store' parameters are required"}), 400
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    if store.lower() == 'fravega':
+        scraper = FravegaScraper(query)
+    elif store.lower() == 'garbarino':
+        scraper = GarbarinoScraper(query)
+    elif store.lower() == 'perozzi':
+        scraper = PerozziScraper(query)
