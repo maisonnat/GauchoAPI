@@ -3,17 +3,29 @@ from scraper import FravegaScraper, GarbarinoScraper, PerozziScraper
 
 app = Flask(__name__)
 
-@app.route('/search', methods=['GET'])
-def search():
-    query = request.args.get('query')
-    store = request.args.get('store')
+@app.route('/scrape', methods=['POST'])
+def scrape():
+    query = request.json.get('query', '')
+    send_notifications = request.json.get('send_notifications', False)
 
-    if not query or not store:
-        return jsonify({"error": "Both 'query' and 'store' parameters are required"}), 400
+    if not query:
+        return jsonify({"error": "Query is missing"}), 400
 
-    if store.lower() == 'fravega':
-        scraper = FravegaScraper(query)
-    elif store.lower() == 'garbarino':
-        scraper = GarbarinoScraper(query)
-    elif store.lower() == 'perozzi':
-        scraper = PerozziScraper(query)
+    fravega_scraper = FravegaScraper(query)
+    garbarino_scraper = GarbarinoScraper(query)
+    perozzi_scraper = PerozziScraper(query)
+
+    fravega_scraper.run(send_notifications=send_notifications)
+    garbarino_scraper.run(send_notifications=send_notifications)
+    perozzi_scraper.run(send_notifications=send_notifications)
+
+    all_results = {
+        'Fravega': fravega_scraper.products,
+        'Garbarino': garbarino_scraper.products,
+        'Perozzi': perozzi_scraper.products
+    }
+
+    return jsonify(all_results), 200
+
+if __name__ == '__main__':
+    app.run(debug=True)

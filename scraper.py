@@ -163,14 +163,19 @@ class BaseScraper(ABC):
         pass
 
 
-    def run(self):
+    def run(self, send_notificactions=False):
         """
         Run the scraper, fetch the HTML content, parse the results, and save the product data. If the structure change and have error,
-        then send email notification
+        then send email notification if send_notifications is set to True.
+        Create your .env and put: 
+        YOUR_USERNAME=
+        YOUR_PASSWORD=
+        :param send_notifications: If True, send email notifications on error. Default is False.
+        :type send_notifications: bool
         """
         try:
             start_time = time.time()
-            logging.info("Starting scraper: %s", self.__class__.__name__ )
+            logging.info("Starting scraper: %s", self.__class__.__name__)
             html = self.fetch_results()
             self.parse_results(html)
             for product in self.products:
@@ -181,7 +186,8 @@ class BaseScraper(ABC):
         except ScraperError as e:
             logging.error("Error on run() scraper: %s", e.scraper)
             logging.error("Message error: %s", e.message)
-            send_email_notification(f"Error trying to run: {e.scraper}", f"Message error: {e.message}")
+            if send_notificactions:
+                send_email_notification(f"Error trying to run: {e.scraper}", f"Message error: {e.message}")
 
 
 class ScraperError(Exception):
